@@ -1,0 +1,27 @@
+{
+  "name": "orangehrm_demo_site",
+  "version": "1.0.0",
+  "description": "Playwright end-to-end tests for the OrangeHRM demo site",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "playwright",
+    "orangehrm",
+    "e2e"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "dotenv": "^18.0.9",
+    "typescript": "^7.0.2"
+  }
+}
