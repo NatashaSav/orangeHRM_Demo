@@ -1,4 +1,6 @@
 import { type Locator, type Page, expect } from '@playwright/test';
+import { ACCESSIBILITY_ROLES, UI_LABELS, URLS } from '../data/constants';
+import { expectedMessages } from '../data/expectedMessages';
 
 export class LoginPage {
   readonly page: Page;
@@ -9,16 +11,20 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.usernameInput = page.getByRole('textbox', { name: 'Username' });
-    this.passwordInput = page.getByRole('textbox', { name: 'Password' });
-    this.loginButton = page.getByRole('button', { name: 'Login' });
-    this.errorMessage = page.getByRole('alert');
+    this.usernameInput = page.getByRole(ACCESSIBILITY_ROLES.textbox, {
+      name: UI_LABELS.username,
+    });
+    this.passwordInput = page.getByRole(ACCESSIBILITY_ROLES.textbox, {
+      name: UI_LABELS.password,
+    });
+    this.loginButton = page.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: UI_LABELS.login,
+    });
+    this.errorMessage = page.getByRole(ACCESSIBILITY_ROLES.alert);
   }
 
   async open() {
-    await this.page.goto('/web/index.php/auth/login', {
-      waitUntil: 'domcontentloaded',
-    });
+    await this.page.goto(URLS.loginPage);
     await expect(this.usernameInput).toBeVisible();
   }
 
@@ -26,5 +32,9 @@ export class LoginPage {
     await this.usernameInput.fill(username);
     await this.passwordInput.fill(password);
     await this.loginButton.click();
+  }
+
+  getRequiredMessages(): Locator {
+    return this.page.getByText(expectedMessages.required, { exact: true });
   }
 }

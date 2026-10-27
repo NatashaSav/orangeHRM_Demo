@@ -1,9 +1,19 @@
 import { type Locator, type Page, expect } from '@playwright/test';
+import { EmployeesApi } from '../api/EmployeesApi';
+import { SystemUsersApi } from '../api/SystemUsersApi';
+import {
+  ACCESSIBILITY_ROLES,
+  HTTP_METHODS,
+  UI_LABELS,
+  URLS,
+  USER_ROLES,
+  USER_STATUSES,
+  type UserStatus,
+} from '../data/constants';
 import type {
   ApiCollection,
   CreatedSystemUserResponse,
   EmployeeRecord,
-  EmployeeSearchResult,
   SystemUserRecord,
 } from '../types';
 
@@ -27,34 +37,68 @@ export class UserManagementPage {
   readonly saveButton: Locator;
   readonly searchButton: Locator;
   readonly resetButton: Locator;
-
-
   readonly systemUsersHeading: Locator;
   readonly editUserHeading: Locator;
+  private readonly rows: Locator;
+  private readonly roleOption: Locator;
+  private readonly enabledStatusOption: Locator;
+  private readonly editIcon: Locator;
+  private readonly deleteIcon: Locator;
+  private readonly deleteConfirmationButton: Locator;
+  private readonly employeesApi: EmployeesApi;
+  private readonly systemUsersApi: SystemUsersApi;
 
   constructor(page: Page) {
     this.page = page;
+    this.employeesApi = new EmployeesApi(page.request, page.url());
+    this.systemUsersApi = new SystemUsersApi(page.request, page.url());
     this.inputGroups = page.locator('.oxd-input-group');
 
     this.searchUsernameInput = this.getInput('Username');
 
     this.formUsernameInput = this.getInput('Username');
-    this.employeeNameInput = page.getByPlaceholder('Type for hints...');
-    this.passwordInput = this.getPasswordInput('Password');
-    this.confirmPasswordInput = this.getPasswordInput('Confirm Password');
-    this.userRoleSelect = this.getSelect('User Role');
-    this.userStatusSelect = this.getSelect('Status');
+    this.employeeNameInput = page.getByPlaceholder(
+      UI_LABELS.employeeNamePlaceholder,
+    );
+    this.passwordInput = this.getPasswordInput(UI_LABELS.password);
+    this.confirmPasswordInput = this.getPasswordInput(
+      UI_LABELS.confirmPassword,
+    );
+    this.userRoleSelect = this.getDropdown(UI_LABELS.userRole);
+    this.userStatusSelect = this.getDropdown(UI_LABELS.status);
 
-    this.addButton = page.getByRole('button', { name: 'Add' });
-    this.saveButton = page.getByRole('button', { name: 'Save' });
-    this.searchButton = page.getByRole('button', { name: 'Search' });
-    this.resetButton = page.getByRole('button', { name: 'Reset' });
-
-    this.systemUsersHeading = page.getByRole('heading', {
-      name: 'System Users',
+    this.addButton = page.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: UI_LABELS.add,
     });
-    this.editUserHeading = page.getByRole('heading', {
-      name: 'Edit User',
+    this.saveButton = page.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: UI_LABELS.save,
+    });
+    this.searchButton = page.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: UI_LABELS.search,
+    });
+    this.resetButton = page.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: UI_LABELS.reset,
+    });
+
+    this.systemUsersHeading = page.getByRole(ACCESSIBILITY_ROLES.heading, {
+      name: UI_LABELS.systemUsers,
+    });
+    this.editUserHeading = page.getByRole(ACCESSIBILITY_ROLES.heading, {
+      name: UI_LABELS.editUser,
+    });
+    this.rows = page.getByRole(ACCESSIBILITY_ROLES.row);
+    this.roleOption = page.getByRole(ACCESSIBILITY_ROLES.option, {
+      name: USER_ROLES.ess,
+      exact: true,
+    });
+    this.enabledStatusOption = page.getByRole(ACCESSIBILITY_ROLES.option, {
+      name: USER_STATUSES.enabled,
+      exact: true,
+    });
+    this.editIcon = page.locator('i.bi-pencil-fill');
+    this.deleteIcon = page.locator('i.bi-trash');
+    this.deleteConfirmationButton = page.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: UI_LABELS.deleteConfirmation,
     });
   }
 
@@ -65,47 +109,29 @@ export class UserManagementPage {
   }
 
   private getInput(label: string): Locator {
-    return this.inputGroup(label).getByRole('textbox');
+    return this.inputGroup(label).getByRole(ACCESSIBILITY_ROLES.textbox);
   }
 
   private getPasswordInput(label: string): Locator {
     return this.inputGroup(label).locator('input[type="password"]');
   }
 
-  private getSelect(label: string): Locator {
+  private getDropdown(label: string): Locator {
     return this.inputGroup(label).locator('.oxd-select-text');
   }
 
   private async selectAvailableEmployee() {
-    const employeesUrl = new URL(
-      '/web/index.php/api/v2/pim/employees?limit=0',
-      this.page.url(),
-    );
-    const usersUrl = new URL(
-      '/web/index.php/api/v2/admin/users?limit=0',
-      this.page.url(),
-    );
-    const [employeesResponse, usersResponse] = await Promise.all([
-      this.page.request.get(employeesUrl.toString()),
-      this.page.request.get(usersUrl.toString()),
+    const [employees, users] = await Promise.all([
+      this.employeesApi.getAllEmployees(),
+      this.systemUsersApi.getAllUsers(),
     ]);
 
-    expect(employeesResponse.ok()).toBeTruthy();
-    expect(usersResponse.ok()).toBeTruthy();
-
-    const employeeCollection =
-      (await employeesResponse.json()) as ApiCollection<EmployeeRecord>;
-    const userCollection =
-      (await usersResponse.json()) as ApiCollection<SystemUserRecord>;
-    expect(Array.isArray(employeeCollection.data)).toBe(true);
-    expect(Array.isArray(userCollection.data)).toBe(true);
-
     const assignedEmployeeNumbers = new Set(
-      userCollection.data
+      users
         .map((user) => user.employee?.empNumber)
         .filter((empNumber): empNumber is number => empNumber !== undefined),
     );
-    const availableEmployees = employeeCollection.data.filter(
+    const availableEmployees = employees.filter(
       (employee) =>
         employee.terminationId === null &&
         !assignedEmployeeNumbers.has(employee.empNumber) &&
@@ -150,21 +176,18 @@ export class UserManagementPage {
     const autocompleteResponse = this.page.waitForResponse((response) => {
       const responseUrl = new URL(response.url());
       return (
-        response.request().method() === 'GET' &&
-        responseUrl.pathname.endsWith('/api/v2/pim/employees') &&
+        response.request().method() === HTTP_METHODS.get &&
+        responseUrl.pathname.endsWith(URLS.employeeCollection) &&
         responseUrl.searchParams.get('nameOrId') === employeeId
       );
     });
 
     await this.employeeNameInput.fill(employeeId);
-    const response = await autocompleteResponse;
-    expect(response.ok()).toBeTruthy();
-
-    const searchResult =
-      (await response.json()) as EmployeeSearchResult;
-    expect(Array.isArray(searchResult.data)).toBe(true);
+    const searchResponse = await autocompleteResponse;
+    const matchingEmployees =
+      await this.employeesApi.readEmployeeSearchResponse(searchResponse);
     expect(
-      searchResult.data.some(
+      matchingEmployees.some(
         (result) =>
           result.empNumber === employee.empNumber &&
           result.employeeId === employeeId &&
@@ -173,10 +196,11 @@ export class UserManagementPage {
       `Autocomplete did not return the active employee matching ID ${employeeId}`,
     ).toBe(true);
 
-    const employeeOption = this.page.getByRole('option', {
+    const employeeOption = this.page.getByRole(ACCESSIBILITY_ROLES.option, {
       name: new RegExp(
         `^${employeeNameParts.map(escapeRegExp).join('\\s+')}$`,
       ),
+      exact: true,
     });
     await expect(employeeOption).toHaveCount(1);
     await expect(employeeOption).toBeVisible();
@@ -184,7 +208,7 @@ export class UserManagementPage {
   }
 
   async open() {
-    await this.page.goto('/web/index.php/admin/viewSystemUsers');
+    await this.page.goto(URLS.systemUsersPage);
     await expect(this.systemUsersHeading).toBeVisible();
   }
 
@@ -194,20 +218,12 @@ export class UserManagementPage {
     await this.selectAvailableEmployee();
 
     await this.userRoleSelect.click();
-    const employeeRoleOption = this.page.getByRole('option', {
-      name: 'ESS',
-      exact: true,
-    });
-    await expect(employeeRoleOption).toBeVisible();
-    await employeeRoleOption.click();
+    await expect(this.roleOption).toBeVisible();
+    await this.roleOption.click();
 
     await this.userStatusSelect.click();
-    const enabledStatusOption = this.page.getByRole('option', {
-      name: 'Enabled',
-      exact: true,
-    });
-    await expect(enabledStatusOption).toBeVisible();
-    await enabledStatusOption.click();
+    await expect(this.enabledStatusOption).toBeVisible();
+    await this.enabledStatusOption.click();
 
     await this.formUsernameInput.fill(username);
     await this.passwordInput.fill(password);
@@ -215,8 +231,8 @@ export class UserManagementPage {
 
     const saveResponse = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v2/admin/users') &&
-        response.request().method() === 'POST',
+        response.url().includes(URLS.adminUsers) &&
+        response.request().method() === HTTP_METHODS.post,
     );
     await this.saveButton.click();
     const response = await saveResponse;
@@ -235,8 +251,8 @@ export class UserManagementPage {
     await this.searchUsernameInput.fill(username);
     const searchResponse = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v2/admin/users?') &&
-        response.request().method() === 'GET',
+        response.url().includes(`${URLS.adminUsers}?`) &&
+        response.request().method() === HTTP_METHODS.get,
     );
     await this.searchButton.click();
     const response = await searchResponse;
@@ -249,8 +265,8 @@ export class UserManagementPage {
   }
 
   getUserRow(username: string): Locator {
-    return this.page.getByRole('row').filter({
-      has: this.page.getByRole('cell', {
+    return this.rows.filter({
+      has: this.page.getByRole(ACCESSIBILITY_ROLES.cell, {
         name: username,
         exact: true,
       }),
@@ -262,17 +278,17 @@ export class UserManagementPage {
     await expect(userRow).toBeVisible();
 
     const editButton = userRow
-      .getByRole('button')
-      .filter({ has: this.page.locator('i.bi-pencil-fill') });
+      .getByRole(ACCESSIBILITY_ROLES.button)
+      .filter({ has: this.editIcon });
     await expect(editButton).toHaveCount(1);
     await editButton.click();
     await expect(this.editUserHeading).toBeVisible();
   }
 
-  async updateUserStatus(status: 'Enabled' | 'Disabled') {
+  async updateUserStatus(status: UserStatus) {
     await this.userStatusSelect.click();
 
-    const statusOption = this.page.getByRole('option', {
+    const statusOption = this.page.getByRole(ACCESSIBILITY_ROLES.option, {
       name: status,
       exact: true,
     });
@@ -281,8 +297,8 @@ export class UserManagementPage {
 
     const updateResponse = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v2/admin/users') &&
-        response.request().method() !== 'GET',
+        response.url().includes(URLS.adminUsers) &&
+        response.request().method() !== HTTP_METHODS.get,
     );
     await this.saveButton.click();
     expect((await updateResponse).ok()).toBeTruthy();
@@ -294,20 +310,18 @@ export class UserManagementPage {
     await expect(userRow).toBeVisible();
 
     const deleteButton = userRow
-      .getByRole('button')
-      .filter({ has: this.page.locator('i.bi-trash') });
+      .getByRole(ACCESSIBILITY_ROLES.button)
+      .filter({ has: this.deleteIcon });
     await expect(deleteButton).toHaveCount(1);
     await deleteButton.click();
 
-    const confirmDeleteButton = this.page.getByRole('button', {
-      name: 'Yes, Delete',
-    });
+    const confirmDeleteButton = this.deleteConfirmationButton;
 
     await expect(confirmDeleteButton).toBeVisible();
     const deleteResponse = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v2/admin/users') &&
-        response.request().method() !== 'GET',
+        response.url().includes(URLS.adminUsers) &&
+        response.request().method() !== HTTP_METHODS.get,
     );
     await confirmDeleteButton.click();
     expect((await deleteResponse).ok()).toBeTruthy();

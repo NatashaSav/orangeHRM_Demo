@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import 'dotenv/config';
+import { APP_BASE_URL } from './data/constants';
 
 export default defineConfig({
   testDir: './tests',
@@ -19,7 +20,7 @@ export default defineConfig({
   },
 
   use: {
-    baseURL: process.env.BASE_URL || 'https://opensource-demo.orangehrmlive.com',
+    baseURL: APP_BASE_URL,
     trace: 'on-first-retry',
   },
 

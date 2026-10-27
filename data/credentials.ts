@@ -5,19 +5,24 @@ export const validCredentials: Credentials = {
   password: process.env.ADMIN_PASSWORD || 'admin123',
 };
 
-export const invalidCredentials: Credentials = {
+const invalidCredentials: Credentials = {
   username: 'invalidUser',
   password: 'wrongPassword',
 };
 
 export const invalidLoginCases: CredentialTestCase[] = [
   {
-    name: 'valid username and invalid password',
+    name: 'incorrect username and incorrect password',
+    username: invalidCredentials.username,
+    password: invalidCredentials.password,
+  },
+  {
+    name: 'correct username and incorrect password',
     username: validCredentials.username,
     password: invalidCredentials.password,
   },
   {
-    name: 'invalid username and valid password',
+    name: 'incorrect username and correct password',
     username: invalidCredentials.username,
     password: validCredentials.password,
   },

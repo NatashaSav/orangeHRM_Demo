@@ -1,5 +1,6 @@
 import { expect, test as base } from '@playwright/test';
 import { validCredentials } from '../data/credentials';
+import { PAGE_URL_PATTERNS } from '../data/constants';
 import { LoginPage } from '../pages/LoginPage';
 import type { AuthenticatedFixtures } from '../types';
 
@@ -11,7 +12,7 @@ export const test = base.extend<AuthenticatedFixtures>({
       validCredentials.username,
       validCredentials.password,
     );
-    await expect(page).toHaveURL(/dashboard/);
+    await expect(page).toHaveURL(PAGE_URL_PATTERNS.dashboard);
     await use(page);
   },
 });

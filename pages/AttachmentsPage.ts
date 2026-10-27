@@ -1,4 +1,11 @@
 import { type Download, type Locator, type Page, expect } from '@playwright/test';
+import {
+  ACCESSIBILITY_ROLES,
+  HTTP_METHODS,
+  UI_LABELS,
+  URLS,
+} from '../data/constants';
+import { SideNavigation } from './SideNavigation';
 
 export class AttachmentsPage {
   readonly page: Page;
@@ -8,34 +15,53 @@ export class AttachmentsPage {
   private readonly fileInput: Locator;
   private readonly descriptionInput: Locator;
   private readonly saveButton: Locator;
+  private readonly sideNavigation: SideNavigation;
+  private readonly rows: Locator;
+  private readonly deleteConfirmationButton: Locator;
+  private readonly downloadIcon: Locator;
+  private readonly deleteIcon: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.attachmentsHeading = page.getByRole('heading', {
-      name: 'Attachments',
+    this.attachmentsHeading = page.getByRole(ACCESSIBILITY_ROLES.heading, {
+      name: UI_LABELS.attachments,
     });
-    this.addButton = page.getByRole('button', { name: /Add/ });
+    this.addButton = page.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: new RegExp(UI_LABELS.add),
+    });
     this.attachmentForm = page
       .locator('form')
-      .filter({ has: page.getByPlaceholder('Type comment here') });
+      .filter({
+        has: page.getByPlaceholder(UI_LABELS.attachmentDescriptionPlaceholder),
+      });
     this.fileInput = this.attachmentForm.locator('input[type="file"]');
     this.descriptionInput = this.attachmentForm.getByPlaceholder(
-      'Type comment here',
+      UI_LABELS.attachmentDescriptionPlaceholder,
     );
-    this.saveButton = this.attachmentForm.getByRole('button', {
-      name: 'Save',
+    this.saveButton = this.attachmentForm.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: UI_LABELS.save,
     });
+    this.sideNavigation = new SideNavigation(page);
+    this.rows = page.getByRole(ACCESSIBILITY_ROLES.row);
+    this.deleteConfirmationButton = page.getByRole(ACCESSIBILITY_ROLES.button, {
+      name: UI_LABELS.deleteConfirmation,
+    });
+    this.downloadIcon = page.locator('i.bi-download');
+    this.deleteIcon = page.locator('i.bi-trash');
   }
 
   async open() {
-    await this.page.getByRole('link', { name: 'My Info' }).click();
+    await this.sideNavigation.openMyInfo();
     await expect(this.attachmentsHeading).toBeVisible();
     await this.attachmentsHeading.scrollIntoViewIfNeeded();
   }
 
   getAttachmentRow(filename: string): Locator {
-    return this.page.getByRole('row').filter({
-      has: this.page.getByRole('cell', { name: filename, exact: true }),
+    return this.rows.filter({
+      has: this.page.getByRole(ACCESSIBILITY_ROLES.cell, {
+        name: filename,
+        exact: true,
+      }),
     });
   }
 
@@ -54,24 +80,21 @@ export class AttachmentsPage {
 
     const uploadResponse = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/screen/personal/attachments') &&
-        response.request().method() === 'POST',
+        response.url().includes(URLS.employeeAttachments) &&
+        response.request().method() === HTTP_METHODS.post,
     );
     await this.saveButton.click();
     const response = await uploadResponse;
     expect(response.ok()).toBeTruthy();
 
-    await this.page.reload();
-    await expect(this.attachmentsHeading).toBeVisible();
-    await this.attachmentsHeading.scrollIntoViewIfNeeded();
     await expect(this.getAttachmentRow(filename)).toBeVisible();
   }
 
   async downloadAttachment(filename: string): Promise<Download> {
     const row = this.getAttachmentRow(filename);
     const downloadButton = row
-      .getByRole('button')
-      .filter({ has: this.page.locator('i.bi-download') });
+      .getByRole(ACCESSIBILITY_ROLES.button)
+      .filter({ has: this.downloadIcon });
 
     const downloadPromise = this.page.waitForEvent('download');
     await downloadButton.click();
@@ -81,11 +104,11 @@ export class AttachmentsPage {
   async deleteAttachment(filename: string) {
     const row = this.getAttachmentRow(filename);
     const deleteButton = row
-      .getByRole('button')
-      .filter({ has: this.page.locator('i.bi-trash') });
+      .getByRole(ACCESSIBILITY_ROLES.button)
+      .filter({ has: this.deleteIcon });
 
     await deleteButton.click();
-    await this.page.getByRole('button', { name: 'Yes, Delete' }).click();
+    await this.deleteConfirmationButton.click();
     await expect(row).toHaveCount(0);
   }
 

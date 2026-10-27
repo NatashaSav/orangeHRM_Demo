@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import {
   validCredentials,
-  invalidCredentials,
   invalidLoginCases,
   emptyFieldCases,
 } from '../data/credentials';
 import { expectedMessages } from '../data/expectedMessages';
+import { PAGE_URL_PATTERNS } from '../data/constants';
+import { DashboardPage } from '../pages/DashboardPage';
 
 test.describe('OrangeHRM Login', () => {
   let loginPage: LoginPage;
@@ -19,22 +20,19 @@ test.describe('OrangeHRM Login', () => {
   test('Login with valid credentials', async ({ page }) => {
     await loginPage.login(validCredentials.username, validCredentials.password);
 
-    await expect(page).toHaveURL(/dashboard/);
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(page).toHaveURL(PAGE_URL_PATTERNS.dashboard);
+    const dashboardPage = new DashboardPage(page);
+    await expect(dashboardPage.dashboardHeading).toBeVisible();
   });
 
   test.describe('Invalid credentials', () => {
-    test('Login with invalid username and password', async () => {
-      await loginPage.login(invalidCredentials.username, invalidCredentials.password);
-
-      await expect(loginPage.errorMessage).toHaveText(expectedMessages.invalidCredentials);
-    });
-
     for (const credentials of invalidLoginCases) {
       test(`Login with ${credentials.name}`, async () => {
         await loginPage.login(credentials.username, credentials.password);
 
-        await expect(loginPage.errorMessage).toHaveText(expectedMessages.invalidCredentials);
+        await expect(loginPage.errorMessage).toHaveText(
+          expectedMessages.invalidCredentials,
+        );
       });
     }
   });
@@ -43,18 +41,14 @@ test.describe('OrangeHRM Login', () => {
     test('Login with both fields empty', async () => {
       await loginPage.loginButton.click();
 
-      const requiredMessages = loginPage.page.getByText(expectedMessages.required, { exact: true });
-
-      await expect(requiredMessages).toHaveCount(2);
+      await expect(loginPage.getRequiredMessages()).toHaveCount(2);
     });
 
     for (const credentials of emptyFieldCases) {
       test(`Login with ${credentials.name}`, async () => {
         await loginPage.login(credentials.username, credentials.password);
 
-        const requiredMessages = loginPage.page.getByText(expectedMessages.required, { exact: true });
-
-        await expect(requiredMessages).toHaveCount(1);
+        await expect(loginPage.getRequiredMessages()).toHaveCount(1);
       });
     }
   });

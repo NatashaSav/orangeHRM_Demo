@@ -43,7 +43,8 @@ project folder instead.
 
 ## Setup
 
-Run these commands from the project root:
+Run these commands from the project root in a Bash-compatible terminal
+(Bash, Zsh, or Git Bash):
 
 ```bash
 npm ci
@@ -57,18 +58,25 @@ On Linux, install Chromium and its required system packages with:
 npx playwright install --with-deps chromium
 ```
 
-On Windows PowerShell, copy the environment template with:
+In Windows PowerShell, use the equivalent command:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-On macOS and Linux, `cp .env.example .env` creates the same local environment
-file. If you do not need custom settings, the copy can be skipped: the project
-uses the demo URL and public demo credentials as defaults.
+In Windows Command Prompt (CMD), use the equivalent command:
 
-Review `.env` and set the application URL and account credentials for your
-environment:
+```cmd
+copy .env.example .env
+```
+
+Each command creates the local `.env` file from the template. You can skip this
+step if you do not need custom settings.
+
+Set the application URL and account credentials in `.env`. The username and
+password below are examples only, not verified or production credentials.
+Replace them with the current credentials shown on the login page for the
+OrangeHRM instance you are testing:
 
 ```dotenv
 BASE_URL=https://opensource-demo.orangehrmlive.com
@@ -76,12 +84,10 @@ ADMIN_USERNAME=Admin
 ADMIN_PASSWORD=admin123
 ```
 
-The values above are the publicly displayed demo account defaults, not
-production credentials. The public demo is shared, and its credentials or data
-may change. For another OrangeHRM instance, use an account with the required
-Admin permissions. Keep real credentials in the ignored `.env` file or in your
-CI secret store; do not commit them. `.env.example` is the safe template to
-include in version control.
+The public demo is shared, so its credentials or data may change. For another
+OrangeHRM instance, use an account with the required Admin permissions. Keep
+real credentials in the ignored `.env` file or in your CI secret store; do not
+commit them. `.env.example` is the safe template to include in version control.
 
 ## Running the tests
 
@@ -101,12 +107,22 @@ npx playwright test tests/dashboard-data-validation.spec.ts
 npx playwright test tests/recruitment-vacancies.spec.ts
 ```
 
-Run tests with a visible browser or the Playwright UI:
+Run tests in a visible browser window:
 
 ```bash
 npm run test:headed
+```
+
+`test:headed` runs the suite in a visible Chromium window.
+
+Run the interactive test runner:
+
+```bash
 npm run test:ui
 ```
+
+`test:ui` opens Playwright UI Mode, where you can select tests and inspect
+steps, traces, and errors.
 
 Check TypeScript and open the HTML report:
 
@@ -125,9 +141,10 @@ records.
 ## Project structure
 
 ```text
-data/       Credentials and expected user-facing messages
+api/        API clients for employee and system user data
+data/       Credentials, constants, expected messages, and dashboard CSV test data
 fixtures/   Shared authenticated Playwright fixture
-pages/      Page Objects and page-specific interactions
+pages/      Page Objects, dashboard widgets, shared side navigation, and page interactions
 tests/      Login, user management, attachments, dashboard, and vacancies specs
 types/      Shared TypeScript interfaces
 utils/      Test data generation and reusable helpers
@@ -137,15 +154,17 @@ utils/      Test data generation and reusable helpers
 
 - **Login:** successful login, invalid credentials, and required-field
   validation.
-- **User management:** creates a uniquely named user, verifies the account,
-  changes its status, confirms the change, and deletes the user. A cleanup hook
-  also removes the created account if the test fails partway through.
+- **User management:** separate tests create a uniquely named user, edit its
+  status, and delete it. Each test creates its own account; a cleanup hook
+  removes it even if the test fails partway through.
 - **My Info attachments:** uploads a generated text file with a description,
   verifies the listing, downloads and checks its contents, then deletes it.
   Cleanup runs after failures as well.
 - **Dashboard:** verifies the Employee Distribution by Sub Unit and Employee
   Distribution by Location chart widgets, including labels that must not appear
-  in the opposite chart.
+  in the opposite chart. Data-driven negative scenarios use
+  `data/dashboard-missing-widgets.csv` to verify configured widget titles are
+  absent.
 - **Recruitment vacancies:** filters by job title and status, then verifies
   matching results and the absence of non-matching results.
 

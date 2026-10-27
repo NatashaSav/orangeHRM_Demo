@@ -1,22 +1,27 @@
 import { type Locator, type Page, expect } from '@playwright/test';
+import { ACCESSIBILITY_ROLES, UI_LABELS } from '../data/constants';
+import { DashboardWidget } from './DashboardWidget';
+import { SideNavigation } from './SideNavigation';
 
 export class DashboardPage {
   readonly page: Page;
   readonly dashboardHeading: Locator;
+  private readonly sideNavigation: SideNavigation;
 
   constructor(page: Page) {
     this.page = page;
-    this.dashboardHeading = page.getByRole('heading', { name: 'Dashboard' });
+    this.dashboardHeading = page.getByRole(ACCESSIBILITY_ROLES.heading, {
+      name: UI_LABELS.dashboard,
+    });
+    this.sideNavigation = new SideNavigation(page);
   }
 
   async open() {
-    await this.page.getByRole('link', { name: 'Dashboard' }).click();
+    await this.sideNavigation.openDashboard();
     await expect(this.dashboardHeading).toBeVisible();
   }
 
-  getChartWidget(title: string): Locator {
-    return this.page
-      .locator('.orangehrm-dashboard-widget.oxd-sheet')
-      .filter({ has: this.page.getByText(title, { exact: true }) });
+  getWidget(title: string): DashboardWidget {
+    return new DashboardWidget(this.page, title);
   }
 }
