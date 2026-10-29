@@ -1,20 +1,12 @@
 import { test, expect } from '../fixtures/authenticatedTest';
 import { UserManagementPage } from '../pages/UserManagementPage';
 import { generateTestUser } from '../utils/testData';
+import { createUser } from '../utils/userUtils';
 import type { TestUser } from '../types';
 import { USER_ROLES, USER_STATUSES } from '../data/constants';
 
 test.describe('OrangeHRM User Management', () => {
   let user: TestUser | undefined;
-
-  async function createUser(
-    userManagementPage: UserManagementPage,
-  ): Promise<TestUser> {
-    user = generateTestUser();
-    await userManagementPage.open();
-    await userManagementPage.addUser(user.username, user.password);
-    return user;
-  }
 
   test.afterEach(async ({ authenticatedPage }) => {
     if (user) {
@@ -26,7 +18,9 @@ test.describe('OrangeHRM User Management', () => {
 
   test('Creates a user', async ({ authenticatedPage }) => {
     const userManagementPage = new UserManagementPage(authenticatedPage);
-    const createdUser = await createUser(userManagementPage);
+    user = generateTestUser();
+    const createdUser = user;
+    await createUser(userManagementPage, createdUser);
     await userManagementPage.searchUser(createdUser.username);
     const userRow = userManagementPage.getUserRow(createdUser.username);
 
@@ -37,7 +31,9 @@ test.describe('OrangeHRM User Management', () => {
 
   test('Edits a user status', async ({ authenticatedPage }) => {
     const userManagementPage = new UserManagementPage(authenticatedPage);
-    const createdUser = await createUser(userManagementPage);
+    user = generateTestUser();
+    const createdUser = user;
+    await createUser(userManagementPage, createdUser);
     await userManagementPage.searchUser(createdUser.username);
     await userManagementPage.editUser(createdUser.username);
     await userManagementPage.updateUserStatus(USER_STATUSES.disabled);
@@ -50,7 +46,9 @@ test.describe('OrangeHRM User Management', () => {
 
   test('Deletes a user', async ({ authenticatedPage }) => {
     const userManagementPage = new UserManagementPage(authenticatedPage);
-    const createdUser = await createUser(userManagementPage);
+    user = generateTestUser();
+    const createdUser = user;
+    await createUser(userManagementPage, createdUser);
     await userManagementPage.searchUser(createdUser.username);
     await userManagementPage.deleteUser(createdUser.username);
     await userManagementPage.searchUser(createdUser.username);

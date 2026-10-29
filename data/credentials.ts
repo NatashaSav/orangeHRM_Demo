@@ -1,8 +1,22 @@
 import type { CredentialTestCase, Credentials } from '../types';
 
+function getRequiredCredential(
+  name: 'ADMIN_USERNAME' | 'ADMIN_PASSWORD',
+): string {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(
+      `Missing required environment variable ${name}. Set it in the .env file.`,
+    );
+  }
+
+  return value;
+}
+
 export const validCredentials: Credentials = {
-  username: process.env.ADMIN_USERNAME || 'Admin',
-  password: process.env.ADMIN_PASSWORD || 'admin123',
+  username: getRequiredCredential('ADMIN_USERNAME'),
+  password: getRequiredCredential('ADMIN_PASSWORD'),
 };
 
 const invalidCredentials: Credentials = {

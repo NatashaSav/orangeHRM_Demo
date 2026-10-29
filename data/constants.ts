@@ -41,6 +41,7 @@ export const UI_LABELS = {
 } as const;
 
 export const USER_ROLES = {
+  admin: 'Admin',
   ess: 'ESS',
 } as const;
 

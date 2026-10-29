@@ -70,24 +70,23 @@ In Windows Command Prompt (CMD), use the equivalent command:
 copy .env.example .env
 ```
 
-Each command creates the local `.env` file from the template. You can skip this
-step if you do not need custom settings.
+These commands create the local `.env` file from the template. Configure the
+account credentials there before running tests. The tests do not provide
+default credentials.
 
-Set the application URL and account credentials in `.env`. The username and
-password below are examples only, not verified or production credentials.
-Replace them with the current credentials shown on the login page for the
-OrangeHRM instance you are testing:
+Set the application URL and account credentials in `.env`. Replace the
+placeholders with the credentials for the OrangeHRM instance you are testing:
 
 ```dotenv
 BASE_URL=https://opensource-demo.orangehrmlive.com
-ADMIN_USERNAME=Admin
-ADMIN_PASSWORD=admin123
+ADMIN_USERNAME=your_username
+ADMIN_PASSWORD=your_password
 ```
 
 The public demo is shared, so its credentials or data may change. For another
 OrangeHRM instance, use an account with the required Admin permissions. Keep
-real credentials in the ignored `.env` file or in your CI secret store; do not
-commit them. `.env.example` is the safe template to include in version control.
+credentials only in the ignored `.env` file. Do not commit them.
+`.env.example` contains placeholders and is safe to include in version control.
 
 ## Running the tests
 
